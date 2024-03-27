@@ -13,27 +13,7 @@ export const calculateProbabilities = (state: State): Probability[] => {
 
   const adjacentCells = getAdjacentCells(state);
 
-  const knownCells = new Map<number, boolean>();
-  for (const index of adjacentCells) {
-    const nearbyAdjacentCells = new Set<number>([index]);
-    const [x, y] = indexToCoord(state, index);
-    for (const cell1 of neighbors(state, x, y)) {
-      if (!cell1.isRevealed) continue;
-      for (const cell2 of neighbors(state, cell1.x, cell1.y)) {
-        if (!adjacentCells.has(cell2.index)) continue;
-        nearbyAdjacentCells.add(cell2.index);
-      }
-    }
-
-    const { totalCount, isMineCount } = search(
-      state,
-      [...nearbyAdjacentCells],
-      knownCells
-    );
-    const count = isMineCount[0];
-    if (count === 0 || count >= totalCount)
-      knownCells.set(index, count >= totalCount);
-  }
+  const knownCells = calculateMediumDifficulty(state, adjacentCells);
 
   // Simple algorithm is to DFS every combination of mine/not-mine on adjacent
   // cells but that gets slow so we partition them into separate segments first
@@ -70,7 +50,7 @@ export const calculateProbabilities = (state: State): Probability[] => {
   return probabilities;
 };
 
-const getAdjacentCells = (state: State) => {
+export const getAdjacentCells = (state: State) => {
   const adjacentCells = new Set<number>();
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
@@ -88,7 +68,35 @@ const getAdjacentCells = (state: State) => {
   return adjacentCells;
 };
 
-const getPartitions = (
+export const calculateMediumDifficulty = (
+  state: State,
+  adjacentCells: Set<number>
+) => {
+  const knownCells = new Map<number, boolean>();
+  for (const index of adjacentCells) {
+    const nearbyAdjacentCells = new Set<number>([index]);
+    const [x, y] = indexToCoord(state, index);
+    for (const cell1 of neighbors(state, x, y)) {
+      if (!cell1.isRevealed) continue;
+      for (const cell2 of neighbors(state, cell1.x, cell1.y)) {
+        if (!adjacentCells.has(cell2.index)) continue;
+        nearbyAdjacentCells.add(cell2.index);
+      }
+    }
+
+    const { totalCount, isMineCount } = search(
+      state,
+      [...nearbyAdjacentCells],
+      knownCells
+    );
+    const count = isMineCount[0];
+    if (count === 0 || count >= totalCount)
+      knownCells.set(index, count >= totalCount);
+  }
+  return knownCells;
+};
+
+export const getPartitions = (
   state: State,
   adjacentCells: Set<number>,
   knownCells: Map<number, boolean>
@@ -127,7 +135,7 @@ const getPartitions = (
   return partitions;
 };
 
-const search = (
+export const search = (
   state: State,
   adjacentCells: number[],
   knownCells: Map<number, boolean>

@@ -2,6 +2,7 @@ import { State } from "../types";
 import { getCell } from "../utils";
 import { workerClient } from "../workers/utils";
 import { calculateProbabilities } from "./probabilities";
+import { clearProbabilities, solve } from "./solve";
 
 export interface Probability {
   x: number;
@@ -9,7 +10,15 @@ export interface Probability {
   mineChance: number;
 }
 
+let solver: ReturnType<typeof solve> | undefined;
+
+export const resetSolver = () => {
+  solver = undefined;
+};
+
 export const initSolverForm = (state: State) => {
+  resetSolver();
+
   const form = document.createElement("form");
   form.addEventListener("submit", (evt) => evt.preventDefault());
 
@@ -26,7 +35,14 @@ export const initSolverForm = (state: State) => {
 
   createButton(form, "Hide probabilities", () => clearProbabilities(state));
 
-  state.elements?.forms.append(form);
+  createButton(form, "Step through solve", () => {
+    if (!solver) solver = solve(state);
+    const result = solver.next();
+    if (result.done) return;
+    solveStepEl.textContent = `Last solve step: ${result.value.step}`;
+    if (result.value.totalDifficulty)
+      solveStepEl.textContent += ` (difficulty = ${result.value.totalDifficulty})`;
+  });
 
   state.solver = {
     elements: {
@@ -44,6 +60,11 @@ export const initSolverForm = (state: State) => {
       ),
     },
   };
+
+  const solveStepEl = document.createElement("div");
+  form.append(solveStepEl);
+
+  state.elements?.forms.append(form);
 };
 
 const createButton = (
@@ -141,17 +162,5 @@ export const showProbabilities = (
     overlay.classList.add("probability");
     overlay.textContent = `${Math.round(mineChance * 100)}%`;
     cell.element?.append(overlay);
-  }
-};
-
-export const clearProbabilities = (state: State) => {
-  for (const row of state.grid) {
-    for (const cell of row) {
-      if (!cell.element) continue;
-      cell.element.classList.remove("highlight", "red", "green", "yellow");
-      for (const child of cell.element.children) {
-        if (child.classList.contains("probability")) child.remove();
-      }
-    }
   }
 };

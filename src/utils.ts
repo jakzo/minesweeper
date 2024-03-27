@@ -23,3 +23,14 @@ export function* neighbors(state: State, x: number, y: number) {
     }
   }
 }
+
+export const cloneState = (state: State): State => ({
+  ...state,
+  grid: state.grid.map((row) =>
+    row.map((cell) => ({ ...cell, element: undefined }))
+  ),
+  // TODO: Serialize it properly
+  // mines: new Set(state.mines),
+  elements: undefined,
+  solver: undefined,
+});
