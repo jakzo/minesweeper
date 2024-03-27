@@ -15,7 +15,7 @@ export interface State {
   width: number;
   height: number;
   mineCount: number;
-  showSolverHud: boolean;
+  showSolverForm: boolean;
   grid: Cell[][];
   mines: Set<number>;
   flagCount: number;
@@ -23,7 +23,8 @@ export interface State {
   isFinished: boolean;
   isWon: boolean;
   elements?: {
-    hud: HTMLDivElement;
+    parent: HTMLElement;
+    forms: HTMLDivElement;
     mineCount: HTMLSpanElement;
     winText: HTMLSpanElement;
     grid: HTMLDivElement;
@@ -32,6 +33,7 @@ export interface State {
     elements?: {
       showProbabilities: HTMLButtonElement;
       probabilitiesEveryMove: HTMLInputElement;
+      guessesAlwaysSucceed: HTMLInputElement;
     };
   };
 }

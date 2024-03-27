@@ -23,16 +23,12 @@ a:hover {
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
-  min-height: 100vh;
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  text-align: center;
+  margin: 0;
 }
 
 #app {
@@ -73,6 +69,18 @@ button:focus-visible {
   }
 }
 
+.forms form > * {
+  margin-right: 16px;
+}
+
+.forms > * {
+  margin-bottom: 16px;
+}
+
+.forms .container {
+  display: inline-block;
+}
+
 .win {
   color: #3c3;
 }
@@ -99,6 +107,15 @@ button:focus-visible {
 
 .cell.highlight {
   border: 2px solid #33c;
+}
+.cell.highlight.yellow {
+  border: 2px solid #cc3;
+}
+.cell.highlight.red {
+  border: 2px solid #c33;
+}
+.cell.highlight.green {
+  border: 2px solid #3c3;
 }
 
 .row {

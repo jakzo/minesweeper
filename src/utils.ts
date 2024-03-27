@@ -7,7 +7,7 @@ export type ReturnsPromise<F extends (...args: any[]) => any> = (
 export const coordToIndex = (state: State, x: number, y: number) =>
   x + y * state.width;
 
-export const indexToCoord = (state: State, index: number) => [
+export const indexToCoord = (state: State, index: number): [number, number] => [
   index % state.width,
   Math.floor(index / state.width),
 ];

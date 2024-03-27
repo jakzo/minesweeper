@@ -1,22 +1,23 @@
-import { State } from "./types";
-import { indexToCoord, getCell, neighbors } from "./utils";
-import { initHud, onMove } from "./solver/hud";
+import { State } from "../types";
+import { indexToCoord, getCell, neighbors } from "../utils";
+import { initSolverForm, onAfterMove, onBeforeMove } from "../solver/form";
+import { initGameForm } from "./form";
 
 export const startGame = (
   width: number,
   height: number,
   mineCount: number,
   parent: HTMLElement,
-  showSolverHud = false
+  showSolverForm = false
 ): State => {
-  const state = initState(width, height, mineCount, showSolverHud);
+  const state = initState(width, height, mineCount, showSolverForm);
 
-  createElements(state, (x, y, isFlag) => {
+  createElements(state, parent, (x, y, isFlag) => {
     if (isFlag) flagCell(state, x, y);
     else chooseCell(state, x, y);
   });
   updateMineCount(state);
-  parent.append(state.elements!.hud, state.elements!.grid);
+  parent.append(state.elements!.forms, state.elements!.grid);
 
   return state;
 };
@@ -25,12 +26,12 @@ export const initState = (
   width: number,
   height: number,
   mineCount: number,
-  showSolverHud = false
+  showSolverForm = false
 ): State => ({
   width,
   height,
   mineCount,
-  showSolverHud,
+  showSolverForm,
   grid: [...Array(height)].map((_, y) =>
     [...Array(width)].map((_, x) => ({
       index: x + y * width,
@@ -51,19 +52,19 @@ export const initState = (
 
 const createElements = (
   state: State,
+  parent: HTMLElement,
   onClick: (x: number, y: number, isFlag: boolean) => void
 ) => {
-  const hud = document.createElement("div");
-  hud.classList.add("hud");
+  const forms = document.createElement("div");
+  forms.classList.add("forms");
 
   const mineCount = document.createElement("span");
   mineCount.classList.add("mine-count");
-  hud.append("Mine count: ", mineCount);
 
   const winText = document.createElement("span");
   winText.classList.add("win", "hide");
   winText.textContent = "You win!";
-  hud.append(" ", winText);
+  forms.append(" ", winText);
 
   const grid = document.createElement("div");
   grid.classList.add("grid", "playing");
@@ -86,9 +87,12 @@ const createElements = (
     grid.append(row);
   }
 
-  state.elements = { hud, mineCount, winText, grid };
+  state.elements = { parent, forms, mineCount, winText, grid };
 
-  if (state.showSolverHud) initHud(state);
+  initGameForm(state);
+  if (state.showSolverForm) initSolverForm(state);
+
+  forms.append("Mine count: ", mineCount);
 };
 
 const decideMinePositions = (state: State, sx: number, sy: number) => {
@@ -110,7 +114,8 @@ const decideMinePositions = (state: State, sx: number, sy: number) => {
     cell.isMine = true;
     cell.element?.classList.add("mine");
 
-    remainingCells[idx] = remainingCells.pop()!;
+    if (remainingCells.length > 1) remainingCells[idx] = remainingCells.pop()!;
+    else remainingCells.pop();
   }
 
   for (let y = 0; y < state.height; y++) {
@@ -134,7 +139,20 @@ const updateMineCount = (state: State) => {
   ).toString();
 };
 
-const chooseCell = (state: State, x: number, y: number) => {
+const chooseCell = async (state: State, x: number, y: number) => {
+  const cell = getCell(state, x, y);
+  cell?.element?.classList.add("loading");
+
+  await onBeforeMove(state, x, y);
+
+  cell?.element?.classList.remove("loading");
+  revealCell(state, x, y);
+
+  checkWin(state);
+  onAfterMove(state);
+};
+
+const revealCell = (state: State, x: number, y: number) => {
   const cell = getCell(state, x, y);
   if (!cell || cell.isRevealed || cell.isFlagged) return;
 
@@ -151,12 +169,9 @@ const chooseCell = (state: State, x: number, y: number) => {
   state.revealedCount++;
   if (cell.number === 0) {
     for (const neighbor of neighbors(state, x, y)) {
-      chooseCell(state, neighbor.x, neighbor.y);
+      revealCell(state, neighbor.x, neighbor.y);
     }
   }
-
-  checkWin(state);
-  onMove(state);
 };
 
 const flagCell = (state: State, x: number, y: number) => {
@@ -167,7 +182,7 @@ const flagCell = (state: State, x: number, y: number) => {
   cell.element?.classList.toggle("flag", cell.isFlagged);
   state.flagCount += cell.isFlagged ? 1 : -1;
   updateMineCount(state);
-  onMove(state);
+  onAfterMove(state);
 };
 
 const checkWin = (state: State) => {

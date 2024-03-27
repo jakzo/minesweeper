@@ -1,5 +1,5 @@
 import "./style.css";
-import { startGame } from "./game.ts";
+import { startGame } from "./game/game.ts";
 import { initWorkers } from "./workers/utils.ts";
 
 const WIDTH = 40;

@@ -7,8 +7,71 @@ export interface Probability {
   mineChance: number;
 }
 
+// TODO: Ignore flags
 export const calculateProbabilities = (state: State): Probability[] => {
-  const adjacentCells: number[] = [];
+  console.time("calculateProbabilities");
+
+  const adjacentCells = getAdjacentCells(state);
+
+  const knownCells = new Map<number, boolean>();
+  for (const index of adjacentCells) {
+    const nearbyAdjacentCells = new Set<number>([index]);
+    const [x, y] = indexToCoord(state, index);
+    for (const cell1 of neighbors(state, x, y)) {
+      if (!cell1.isRevealed) continue;
+      for (const cell2 of neighbors(state, cell1.x, cell1.y)) {
+        if (!adjacentCells.has(cell2.index)) continue;
+        nearbyAdjacentCells.add(cell2.index);
+      }
+    }
+
+    const { totalCount, isMineCount } = search(
+      state,
+      [...nearbyAdjacentCells],
+      knownCells
+    );
+    const count = isMineCount[0];
+    if (count === 0 || count >= totalCount)
+      knownCells.set(index, count >= totalCount);
+  }
+
+  // Simple algorithm is to DFS every combination of mine/not-mine on adjacent
+  // cells but that gets slow so we partition them into separate segments first
+  const partitions = getPartitions(state, adjacentCells, knownCells);
+
+  const probabilities = partitions
+    .flatMap((partition) => {
+      const partitionArr = [...partition];
+      const { totalCount, isMineCount } = search(
+        state,
+        partitionArr,
+        knownCells
+      );
+
+      const probabilities = [...partitionArr.entries()].map(
+        ([i, index]): Probability => {
+          const [x, y] = indexToCoord(state, index);
+          const mineChance = isMineCount[i] / totalCount;
+          return { x, y, mineChance };
+        }
+      );
+
+      return probabilities;
+    })
+    .concat(
+      [...knownCells].map(([index, isMine]) => {
+        const [x, y] = indexToCoord(state, index);
+        return { x, y, mineChance: isMine ? 1 : 0 };
+      })
+    );
+
+  console.timeEnd("calculateProbabilities");
+
+  return probabilities;
+};
+
+const getAdjacentCells = (state: State) => {
+  const adjacentCells = new Set<number>();
   for (let y = 0; y < state.height; y++) {
     for (let x = 0; x < state.width; x++) {
       const cell = getCell(state, x, y)!;
@@ -18,11 +81,57 @@ export const calculateProbabilities = (state: State): Probability[] => {
         isAdjacentToRevealedCell(state, x, y)
       ) {
         const index = coordToIndex(state, x, y);
-        adjacentCells.push(index);
+        adjacentCells.add(index);
       }
     }
   }
+  return adjacentCells;
+};
 
+const getPartitions = (
+  state: State,
+  adjacentCells: Set<number>,
+  knownCells: Map<number, boolean>
+) => {
+  const visited = new Set<number>();
+  const partitions: Set<number>[] = [];
+
+  for (const index of adjacentCells) {
+    const partition = new Set<number>();
+    const visit = (index: number) => {
+      if (
+        visited.has(index) ||
+        knownCells.has(index) ||
+        !adjacentCells.has(index) ||
+        partition.has(index)
+      )
+        return;
+
+      visited.add(index);
+      partition.add(index);
+
+      for (const cell1 of neighbors(state, ...indexToCoord(state, index))) {
+        if (cell1.isRevealed) {
+          for (const cell2 of neighbors(state, cell1.x, cell1.y)) {
+            visit(cell2.index);
+          }
+        }
+      }
+    };
+
+    visit(index);
+
+    if (partition.size > 0) partitions.push(partition);
+  }
+
+  return partitions;
+};
+
+const search = (
+  state: State,
+  adjacentCells: number[],
+  knownCells: Map<number, boolean>
+) => {
   const isMineCount = adjacentCells.map(() => 0);
   let totalCount = 0;
 
@@ -30,7 +139,6 @@ export const calculateProbabilities = (state: State): Probability[] => {
   const mineStack: boolean[] = [];
   let minesLeft = state.mineCount - state.flagCount;
 
-  // TODO: partition adjacent cells and calculate separately for speed
   const visit = () => {
     if (mineStack.length >= adjacentCells.length) {
       totalCount++;
@@ -59,6 +167,11 @@ export const calculateProbabilities = (state: State): Probability[] => {
         let neighboringFlags = 0;
         for (const n2 of neighbors(state, cx, cy)) {
           if (n2.isRevealed) continue;
+          const isKnownMine = knownCells.get(n2.index);
+          if (isKnownMine !== undefined) {
+            if (isKnownMine) neighboringFlags++;
+            continue;
+          }
           if (n2.isFlagged) {
             neighboringFlags++;
             continue;
@@ -81,11 +194,7 @@ export const calculateProbabilities = (state: State): Probability[] => {
 
   visit();
 
-  return [...adjacentCells.entries()].map(([i, index]) => {
-    const [x, y] = indexToCoord(state, index);
-    const mineChance = isMineCount[i] / totalCount;
-    return { x, y, mineChance };
-  });
+  return { totalCount, isMineCount };
 };
 
 const isAdjacentToRevealedCell = (state: State, x: number, y: number) => {
