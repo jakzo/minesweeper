@@ -1,5 +1,6 @@
 import { ReturnsPromise } from "../utils";
 import { jobs } from "./jobs";
+import MinesweeperWorker from "./worker?worker";
 
 const POOL_SIZE = 1;
 
@@ -9,22 +10,17 @@ const pool: Worker[] = [];
 
 export const initWorkers = () => {
   while (workers.size < POOL_SIZE) {
-    const worker = createWorker();
+    const worker = new MinesweeperWorker();
     workers.add(worker);
     pool.push(worker);
   }
-};
-
-const createWorker = () => {
-  const workerUrl = new URL("worker.js", import.meta.url);
-  return new Worker(workerUrl, { type: "module" });
 };
 
 const getFreeWorker = () => {
   const worker = pool.pop();
   if (worker) return worker;
 
-  const tempWorker = createWorker();
+  const tempWorker = new MinesweeperWorker();
   workers.add(tempWorker);
   tempWorkers.add(tempWorker);
   return tempWorker;
