@@ -1,4 +1,5 @@
-import { ReturnsPromise } from "../utils";
+import { State } from "../types";
+import { ReturnsPromise, cloneState } from "../utils";
 import { jobs } from "./jobs";
 import MinesweeperWorker from "./worker?worker";
 
@@ -26,7 +27,7 @@ const getFreeWorker = () => {
   return tempWorker;
 };
 
-export const callWorker = (name: string, args: unknown[]) =>
+export const callWorker = (name: string, state: State, args: unknown[]) =>
   new Promise((resolve, reject) => {
     const worker = getFreeWorker();
 
@@ -55,9 +56,8 @@ export const callWorker = (name: string, args: unknown[]) =>
 
     worker.postMessage({
       name,
-      args: JSON.stringify(args, (key, value) =>
-        key === "elements" || key === "element" ? undefined : value
-      ),
+      state: cloneState(state),
+      args,
     });
   });
 
@@ -68,6 +68,6 @@ export type WorkerClient = {
 export const workerClient = Object.fromEntries(
   Object.keys(jobs).map((name) => [
     name,
-    (...args: unknown[]) => callWorker(name, args),
+    (state: State, ...args: unknown[]) => callWorker(name, state, args),
   ])
 ) as WorkerClient;

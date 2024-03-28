@@ -16,7 +16,7 @@ export interface State {
   height: number;
   mineCount: number;
   showSolverForm: boolean;
-  grid: Cell[][];
+  grid: Cell[];
   mines: Set<number>;
   flagCount: number;
   revealedCount: number;
@@ -32,13 +32,18 @@ export interface State {
   solver?: {
     elements?: {
       showProbabilities: HTMLButtonElement;
+      minDifficulty: HTMLInputElement;
       probabilitiesEveryMove: HTMLInputElement;
       guessesAlwaysSucceed: HTMLInputElement;
+      ensureSolvable: HTMLInputElement;
     };
   };
 }
 
 export interface WorkerMessage {
   name: keyof typeof jobs;
+  state: State;
   args: string;
 }
+
+export type WorkerJob = (state: State, ...args: unknown[]) => unknown;

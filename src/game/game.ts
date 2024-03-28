@@ -7,7 +7,12 @@ import {
   resetSolver,
 } from "../solver/form";
 import { initGameForm } from "./form";
-import { flagCell, revealCell } from "./controls";
+import {
+  decideMinePositions,
+  decideMinePositionsSolvable,
+  flagCell,
+  revealCell,
+} from "./controls";
 import { workerClient } from "../workers/utils";
 
 export const startGame = (
@@ -19,9 +24,9 @@ export const startGame = (
 ): State => {
   const state = initState(width, height, mineCount, showSolverForm);
 
-  createElements(state, parent, (x, y, isFlag) => {
+  createElements(state, parent, async (x, y, isFlag) => {
     if (isFlag) flagCell(state, x, y);
-    else chooseCell(state, x, y);
+    else await chooseCell(state, x, y);
     onAfterMove(state);
     resetSolver();
   });
@@ -41,17 +46,19 @@ export const initState = (
   height,
   mineCount,
   showSolverForm,
-  grid: [...Array(height)].map((_, y) =>
-    [...Array(width)].map((_, x) => ({
-      index: x + y * width,
+  grid: [...Array(width * height)].map((_, index) => {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    return {
+      index,
       x,
       y,
       isMine: false,
       isRevealed: false,
       isFlagged: false,
       number: 0,
-    }))
-  ),
+    };
+  }),
   mines: new Set(),
   flagCount: 0,
   revealedCount: 0,
@@ -62,7 +69,7 @@ export const initState = (
 const createElements = (
   state: State,
   parent: HTMLElement,
-  onClick: (x: number, y: number, isFlag: boolean) => void
+  onClick: (x: number, y: number, isFlag: boolean) => Promise<void>
 ) => {
   const forms = document.createElement("div");
   forms.classList.add("forms");
@@ -89,16 +96,18 @@ const createElements = (
         evt.preventDefault();
         if (evt.button === 0) {
           const isFirstMove = state.revealedCount === 0;
-          onClick(x, y, false);
+          await onClick(x, y, false);
           if (isFirstMove) {
             const difficulty = await workerClient.getDifficulty(state);
             difficultyEl.textContent =
               difficulty !== undefined ? difficulty.toFixed(1) : "unsolvable";
           }
-        } else if (evt.button === 2) onClick(x, y, true);
+        } else if (evt.button === 2) {
+          await onClick(x, y, true);
+        }
       });
       row.append(cell);
-      state.grid[y][x].element = cell;
+      getCell(state, x, y)!.element = cell;
     }
     grid.append(row);
   }
@@ -124,8 +133,15 @@ const chooseCell = async (state: State, x: number, y: number) => {
   const cell = getCell(state, x, y);
   cell?.element?.classList.add("loading");
 
-  await onBeforeMove(state, x, y);
+  if (state.mines.size === 0) {
+    const decide = state.solver?.elements?.ensureSolvable
+      ? decideMinePositionsSolvable
+      : decideMinePositions;
+    await decide(state, x, y);
+  } else {
+    await onBeforeMove(state, x, y);
+    revealCell(state, x, y);
+  }
 
   cell?.element?.classList.remove("loading");
-  revealCell(state, x, y);
 };

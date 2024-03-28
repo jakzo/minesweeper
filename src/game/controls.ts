@@ -1,11 +1,10 @@
+import { getDifficulty } from "../solver/solve";
 import { State } from "../types";
 import { getCell, indexToCoord, neighbors } from "../utils";
 
 export const revealCell = (state: State, x: number, y: number) => {
   const cell = getCell(state, x, y);
   if (!cell || cell.isRevealed || cell.isFlagged) return;
-
-  if (state.revealedCount === 0) decideMinePositions(state, x, y);
 
   if (cell.isMine) {
     state.isFinished = true;
@@ -26,6 +25,8 @@ export const revealCell = (state: State, x: number, y: number) => {
 };
 
 export const flagCell = (state: State, x: number, y: number) => {
+  if (state.revealedCount === 0) return;
+
   const cell = getCell(state, x, y);
   if (!cell || cell.isRevealed) return;
 
@@ -44,8 +45,7 @@ const updateMineCount = (state: State) => {
   ).toString();
 };
 
-const decideMinePositions = (state: State, sx: number, sy: number) => {
-  // TODO: Ensure solvable
+export const decideMinePositions = (state: State, sx: number, sy: number) => {
   const remainingCells = [...Array(state.width * state.height).keys()].filter(
     (_, i) => {
       const [x, y] = indexToCoord(state, i);
@@ -62,23 +62,55 @@ const decideMinePositions = (state: State, sx: number, sy: number) => {
     const cell = getCell(state, x, y)!;
     cell.isMine = true;
     cell.element?.classList.add("mine");
+    state.mines.add(mineIdx);
 
     if (remainingCells.length > 1) remainingCells[idx] = remainingCells.pop()!;
     else remainingCells.pop();
   }
 
-  for (let y = 0; y < state.height; y++) {
-    for (let x = 0; x < state.width; x++) {
-      const cell = getCell(state, x, y)!;
-      cell.number = 0;
-      for (const neighbor of neighbors(state, x, y)) {
-        if (neighbor.isMine) cell.number++;
-      }
-      if (!cell.isMine) {
-        cell.element?.classList.add(`n${cell.number}`);
-      }
+  for (const cell of state.grid) {
+    cell.number = 0;
+    for (const neighbor of neighbors(state, cell.x, cell.y)) {
+      if (neighbor.isMine) cell.number++;
+    }
+    if (!cell.isMine) {
+      cell.element?.classList.add(`n${cell.number}`);
     }
   }
+};
+
+export const decideMinePositionsSolvable = async (
+  state: State,
+  sx: number,
+  sy: number
+) => {
+  const minDifficulty =
+    +(state.solver?.elements?.minDifficulty.value ?? "0") || 0;
+
+  let difficulty: number | undefined;
+  do {
+    for (const cell of state.grid) {
+      cell.isMine = cell.isRevealed = false;
+      cell.number = 0;
+      cell.element?.classList.remove(
+        "mine",
+        ...[...Array(10).keys()].map((i) => `n${i}`)
+      );
+      cell.element?.classList.add("hidden");
+    }
+    state.revealedCount = 0;
+    state.mines.clear();
+
+    decideMinePositions(state, sx, sy);
+    revealCell(state, sx, sy);
+
+    difficulty = getDifficulty(state);
+    console.log("=== dif", difficulty);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  } while (!difficulty || difficulty < minDifficulty);
+
+  return difficulty;
 };
 
 export const checkWin = (state: State) => {

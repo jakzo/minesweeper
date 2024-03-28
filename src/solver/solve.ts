@@ -1,6 +1,6 @@
 import { flagCell, revealCell } from "../game/controls";
 import { State } from "../types";
-import { cloneState, coordToIndex, getCell, indexToCoord } from "../utils";
+import { cloneState, getCell, indexToCoord } from "../utils";
 import {
   calculateMediumDifficulty,
   getAdjacentCells,
@@ -26,13 +26,14 @@ export function* solve(state: State) {
         );
       }
       yield { step: "adjacentCells", adjacentCells };
-    } else {
+    } else if (
+      state.revealedCount === 0 ||
+      state.flagCount >= state.mineCount
+    ) {
       const hiddenCells: number[] = [];
-      for (const [y, row] of state.grid.entries()) {
-        for (const [x, cell] of row.entries()) {
-          if (!cell.isRevealed && !cell.isFlagged) {
-            hiddenCells.push(coordToIndex(state, x, y));
-          }
+      for (const [index, cell] of state.grid.entries()) {
+        if (!cell.isRevealed && !cell.isFlagged) {
+          hiddenCells.push(index);
         }
       }
 
@@ -41,6 +42,9 @@ export function* solve(state: State) {
       revealCell(state, x, y);
       yield { step: "randomCell", x, y };
       continue;
+    } else {
+      yield { step: "unsolvable" };
+      return;
     }
 
     // TODO: calculateEasyDifficulty
@@ -136,19 +140,17 @@ export const getDifficulty = (state: State) => {
 };
 
 export const clearProbabilities = (state: State) => {
-  for (const row of state.grid) {
-    for (const cell of row) {
-      if (!cell.element) continue;
-      cell.element.classList.remove(
-        "highlight",
-        "red",
-        "green",
-        "yellow",
-        ...[0, 1, 2].map((i) => `partition${i}`)
-      );
-      for (const child of cell.element.children) {
-        if (child.classList.contains("probability")) child.remove();
-      }
+  for (const cell of state.grid) {
+    if (!cell.element) continue;
+    cell.element.classList.remove(
+      "highlight",
+      "red",
+      "green",
+      "yellow",
+      ...[0, 1, 2].map((i) => `partition${i}`)
+    );
+    for (const child of cell.element.children) {
+      if (child.classList.contains("probability")) child.remove();
     }
   }
 };

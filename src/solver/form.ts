@@ -1,5 +1,5 @@
 import { State } from "../types";
-import { getCell } from "../utils";
+import { createCheckbox, getCell } from "../utils";
 import { workerClient } from "../workers/utils";
 import { calculateProbabilities } from "./probabilities";
 import { clearProbabilities, solve } from "./solve";
@@ -44,9 +44,17 @@ export const initSolverForm = (state: State) => {
       solveStepEl.textContent += ` (difficulty = ${result.value.totalDifficulty})`;
   });
 
+  const minDifficultyEl = createTextInput(
+    form,
+    "Minimum difficulty: ",
+    "number",
+    "50"
+  );
+
   state.solver = {
     elements: {
       showProbabilities: showProbabilitiesButton,
+      minDifficulty: minDifficultyEl,
       probabilitiesEveryMove: createCheckbox(
         form,
         "Show probabilities on every move: ",
@@ -58,6 +66,7 @@ export const initSolverForm = (state: State) => {
         false,
         true
       ),
+      ensureSolvable: createCheckbox(form, "Ensure solvable: ", true),
     },
   };
 
@@ -79,27 +88,27 @@ const createButton = (
   return buttonEl;
 };
 
-const createCheckbox = (
+const createTextInput = (
   parent: HTMLElement,
   label: string,
-  defaultChecked = false,
-  isHidden = false
+  type: string,
+  defaultValue = ""
 ) => {
   const containerEl = document.createElement("div");
   containerEl.classList.add("container");
   const labelEl = document.createElement("label");
   labelEl.textContent = label;
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.checked = defaultChecked;
+  const inputEl = document.createElement("input");
+  inputEl.type = type;
+  inputEl.value = defaultValue;
   const id = label
     .replace(/^\W+|\W+$/g, "")
     .replace(/\W+/g, "-")
     .toLowerCase();
-  labelEl.htmlFor = checkbox.id = id;
-  containerEl.append(labelEl, checkbox);
-  if (!isHidden) parent.append(containerEl);
-  return checkbox;
+  labelEl.htmlFor = inputEl.id = id;
+  containerEl.append(labelEl, inputEl);
+  parent.append(containerEl);
+  return inputEl;
 };
 
 export const onBeforeMove = async (state: State, x: number, y: number) => {
