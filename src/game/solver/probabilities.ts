@@ -1,22 +1,18 @@
-import { State } from "../types";
+import type { Probabilities, State } from "../types";
 import { coordToIndex, getCell, indexToCoord, neighbors } from "../utils";
 
-export interface Probability {
-  x: number;
-  y: number;
-  mineChance: number;
-}
-
 // TODO: Ignore flags
-export const calculateProbabilities = (state: State): Probability[] => {
+export const calculateProbabilities = (state: State): Probabilities => {
   console.time("calculateProbabilities");
 
   const adjacentCells = getAdjacentCells(state);
 
   const knownCells = calculateMediumDifficulty(state, adjacentCells);
 
-  // Simple algorithm is to DFS every combination of mine/not-mine on adjacent
-  // cells but that gets slow so we partition them into separate segments first
+  // Simple algorithm is to DFS every combination of mine/not-mine on
+  // unrevealed cells adjacent to revealed cells but that gets exponentially
+  // slow based on number of cells so we first partition them into smaller
+  // segments where the DFS results will not affect other cells
   const partitions = getPartitions(state, adjacentCells, knownCells);
 
   const probabilities = partitions
@@ -29,10 +25,9 @@ export const calculateProbabilities = (state: State): Probability[] => {
       );
 
       const probabilities = [...partitionArr.entries()].map(
-        ([i, index]): Probability => {
-          const [x, y] = indexToCoord(state, index);
+        ([i, index]): [number, number] => {
           const mineChance = isMineCount[i] / totalCount;
-          return { x, y, mineChance };
+          return [index, mineChance];
         }
       );
 
@@ -41,13 +36,13 @@ export const calculateProbabilities = (state: State): Probability[] => {
     .concat(
       [...knownCells].map(([index, isMine]) => {
         const [x, y] = indexToCoord(state, index);
-        return { x, y, mineChance: isMine ? 1 : 0 };
+        return [index, isMine ? 1 : 0];
       })
     );
 
   console.timeEnd("calculateProbabilities");
 
-  return probabilities;
+  return new Map(probabilities);
 };
 
 export const getAdjacentCells = (state: State) => {
@@ -96,6 +91,7 @@ export const calculateMediumDifficulty = (
   return knownCells;
 };
 
+// TODO: Get partitions via BFS since some boundaries touch
 export const getPartitions = (
   state: State,
   adjacentCells: Set<number>,

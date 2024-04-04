@@ -1,6 +1,6 @@
-import { flagCell, revealCell } from "../game/controls";
-import { State } from "../types";
-import { cloneState, getCell, indexToCoord } from "../utils";
+import { clickCell, revealCell } from "../interactions";
+import type { SolveResult, State } from "../types";
+import { getCell, indexToCoord, isStarted } from "../utils";
 import {
   calculateMediumDifficulty,
   getAdjacentCells,
@@ -8,39 +8,28 @@ import {
   search,
 } from "./probabilities";
 
-export function* solve(state: State) {
+export function* solveStepByStep(state: State) {
   let mediumDifficultyReveals = 0;
   const solvedPartitionSizes: number[] = [];
 
-  main: while (!state.isFinished) {
+  main: while (!state.stopTimeMs) {
     const adjacentCells = getAdjacentCells(state);
     const isAdjacentCellFree = [...adjacentCells].some(
       (index) => !getCell(state, ...indexToCoord(state, index))?.isFlagged
     );
     if (isAdjacentCellFree) {
-      clearProbabilities(state);
-      for (const index of adjacentCells) {
-        getCell(state, ...indexToCoord(state, index))?.element?.classList.add(
-          "highlight",
-          "blue"
-        );
-      }
       yield { step: "adjacentCells", adjacentCells };
-    } else if (
-      state.revealedCount === 0 ||
-      state.flagCount >= state.mineCount
-    ) {
+    } else if (!isStarted(state) || state.flagCount >= state.mineCount) {
       const hiddenCells: number[] = [];
-      for (const [index, cell] of state.grid.entries()) {
+      for (const [index, cell] of state.cells.entries()) {
         if (!cell.isRevealed && !cell.isFlagged) {
           hiddenCells.push(index);
         }
       }
 
       const index = hiddenCells[Math.floor(Math.random() * hiddenCells.length)];
-      const [x, y] = indexToCoord(state, index);
-      revealCell(state, x, y);
-      yield { step: "randomCell", x, y };
+      revealCell(state, state.cells[index]!);
+      yield { step: "randomCell", cell: state.cells[index]! };
       continue;
     } else {
       yield { step: "unsolvable" };
@@ -51,7 +40,7 @@ export function* solve(state: State) {
 
     const knownCells = calculateMediumDifficulty(state, adjacentCells);
     for (const [index, isMine] of knownCells) {
-      (isMine ? flagCell : revealCell)(state, ...indexToCoord(state, index));
+      clickCell(state, state.cells[index]!, isMine);
     }
     for (const [, isMine] of knownCells) {
       if (!isMine) mediumDifficultyReveals++;
@@ -64,15 +53,6 @@ export function* solve(state: State) {
     if (knownCells.size > 0) continue;
 
     const partitions = getPartitions(state, adjacentCells, knownCells);
-    clearProbabilities(state);
-    for (const [i, partition] of partitions.entries()) {
-      for (const index of partition) {
-        getCell(state, ...indexToCoord(state, index))?.element?.classList.add(
-          "highlight",
-          `partition${i % 3}`
-        );
-      }
-    }
     yield { step: "partitions", partitions };
 
     partitions.sort((a, b) => a.size - b.size);
@@ -99,11 +79,7 @@ export function* solve(state: State) {
 
       if (knownCells.size > 0) {
         for (const [index, isMine] of knownCells) {
-          // TODO: Change func signature since I always call them like this
-          (isMine ? flagCell : revealCell)(
-            state,
-            ...indexToCoord(state, index)
-          );
+          clickCell(state, state.cells[index]!, isMine);
         }
         solvedPartitionSizes.push(partition.size);
         yield {
@@ -131,26 +107,10 @@ export function* solve(state: State) {
   };
 }
 
-export const getDifficulty = (state: State) => {
-  const clonedState = cloneState(state);
-  for (const result of solve(clonedState)) {
-    if (result.totalDifficulty) return result.totalDifficulty;
+export const solve = (state: State) => {
+  const result: SolveResult = {};
+  for (const step of solveStepByStep(state)) {
+    if (step.totalDifficulty) result.difficulty = step.totalDifficulty;
   }
-  return undefined;
-};
-
-export const clearProbabilities = (state: State) => {
-  for (const cell of state.grid) {
-    if (!cell.element) continue;
-    cell.element.classList.remove(
-      "highlight",
-      "red",
-      "green",
-      "yellow",
-      ...[0, 1, 2].map((i) => `partition${i}`)
-    );
-    for (const child of cell.element.children) {
-      if (child.classList.contains("probability")) child.remove();
-    }
-  }
+  return result;
 };

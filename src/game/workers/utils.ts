@@ -1,5 +1,4 @@
-import { State } from "../types";
-import { ReturnsPromise, cloneState } from "../utils";
+import { type ReturnsPromise } from "../utils";
 import { jobs } from "./jobs";
 import MinesweeperWorker from "./worker?worker";
 
@@ -17,6 +16,15 @@ export const initWorkers = () => {
   }
 };
 
+export const destroyWorkers = () => {
+  for (const worker of workers) {
+    worker.terminate();
+  }
+  workers.clear();
+  tempWorkers.clear();
+  pool.splice(0, pool.length);
+};
+
 const getFreeWorker = () => {
   const worker = pool.pop();
   if (worker) return worker;
@@ -27,9 +35,20 @@ const getFreeWorker = () => {
   return tempWorker;
 };
 
-export const callWorker = (name: string, state: State, args: unknown[]) =>
+export const callWorker = (name: string, args: unknown[]) =>
   new Promise((resolve, reject) => {
     const worker = getFreeWorker();
+
+    const cleanup = () => {
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("error", onError);
+
+      if (tempWorkers.has(worker)) {
+        worker.terminate();
+      } else {
+        pool.push(worker);
+      }
+    };
 
     const onMessage = (evt: MessageEvent<unknown>) => {
       cleanup();
@@ -43,22 +62,7 @@ export const callWorker = (name: string, state: State, args: unknown[]) =>
     worker.addEventListener("message", onMessage);
     worker.addEventListener("error", onError);
 
-    const cleanup = () => {
-      worker.removeEventListener("message", onMessage);
-      worker.removeEventListener("error", onError);
-
-      if (tempWorkers.has(worker)) {
-        worker.terminate();
-      } else {
-        pool.push(worker);
-      }
-    };
-
-    worker.postMessage({
-      name,
-      state: cloneState(state),
-      args,
-    });
+    worker.postMessage({ name, args });
   });
 
 export type WorkerClient = {
@@ -68,6 +72,6 @@ export type WorkerClient = {
 export const workerClient = Object.fromEntries(
   Object.keys(jobs).map((name) => [
     name,
-    (state: State, ...args: unknown[]) => callWorker(name, state, args),
+    (...args: unknown[]) => callWorker(name, args),
   ])
 ) as WorkerClient;

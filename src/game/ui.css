@@ -1,0 +1,76 @@
+.cell.highlight {
+  border: 2px solid #33c;
+}
+.cell.highlight.yellow {
+  border: 2px solid #cc3;
+}
+.cell.highlight.red {
+  border: 2px solid #c33;
+}
+.cell.highlight.green {
+  border: 2px solid #3c3;
+}
+
+.cell.partition0 {
+  border: 2px solid #c3c;
+}
+.cell.partition1 {
+  border: 2px solid #3cc;
+}
+.cell.partition2 {
+  border: 2px solid #cc3;
+}
+
+.cell.hidden.mine {
+  background: #f99;
+}
+.mine::before {
+  content: "💣";
+}
+.cell.mine.flag {
+  background: #393;
+}
+
+.hidden.flag {
+  background: #933;
+}
+
+.grid.playing .hidden.flag::before {
+  content: "🚩";
+}
+
+.n1::before {
+  content: "1";
+}
+.n2::before {
+  content: "2";
+}
+.n3::before {
+  content: "3";
+}
+.n4::before {
+  content: "4";
+}
+.n5::before {
+  content: "5";
+}
+.n6::before {
+  content: "6";
+}
+.n7::before {
+  content: "7";
+}
+.n8::before {
+  content: "8";
+}
+
+.probability {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  font-size: 9px;
+}

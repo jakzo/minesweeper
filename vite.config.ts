@@ -1,9 +1,10 @@
-import { UserConfig } from "vite";
+import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 
-const config: UserConfig = {
+// https://vitejs.dev/config/
+export default defineConfig({
   build: {
     sourcemap: true,
   },
-};
-
-export default config;
+  plugins: [svelte()],
+});
