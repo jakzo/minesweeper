@@ -63,7 +63,7 @@ export const initState = ({
   width,
   height,
   mineCount,
-  cells: [...Array(width * height)].map((_, index) => {
+  cells: [...Array(width * height)].map((_, index): Cell => {
     const x = index % width;
     const y = Math.floor(index / width);
     return {
@@ -74,7 +74,6 @@ export const initState = ({
       isRevealed: false,
       isFlagged: false,
       number: 0,
-      markings: {},
     };
   }),
   mines: new Set(),

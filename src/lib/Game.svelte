@@ -17,6 +17,7 @@
   } from "../game/types";
   import {
     CancelledError,
+    cloneState,
     initState,
     isFinished,
     isStarted,
@@ -28,7 +29,7 @@
     decideMinePositionsRandom,
     decideMinePositionsWhere,
   } from "../game/interactions";
-  import { solveStepByStep } from "../game/solver/solve";
+  import { solve, solveStepByStep } from "../game/solver/solve";
   import DebugForm from "./DebugForm.svelte";
 
   export let showDebugMenu = false;
@@ -83,7 +84,13 @@
           await decideMinePositionsWhere(state, cell.x, cell.y, async () => {
             if (startingState !== state) throw new CancelledError();
             numGeneratedGrids++;
-            const solveResult = await workerClient.solve(state);
+            const stateWithFirstMove = cloneState(state);
+            clickCell(
+              stateWithFirstMove,
+              stateWithFirstMove.cells[cell.index],
+              false
+            );
+            const solveResult = await workerClient.solve(stateWithFirstMove);
             if (solveResult.difficulty === undefined) return false;
 
             if (
@@ -136,7 +143,7 @@
   });
 </script>
 
-<div class="header">
+<div class="form-container">
   <NewGameForm
     onStartNewGame={(opts) => {
       gameOptions = opts;
@@ -194,31 +201,33 @@
     onClick={onCellClick}
   />
   {#if showDebugMenu}
-    <DebugForm
-      {state}
-      undo={() => {
-        if (!state) return;
-        undo(state);
-        triggerStateUpdate();
-      }}
-      stepThroughSolve={() => {
-        if (!state) return;
-        if (!solver) solver = solveStepByStep(state);
-        solverStep = solver.next().value;
-        state = state;
-      }}
-      {solverStep}
-      bind:showProbabilitiesOnMove
-      showProbabilities={() => state && showProbabilities(state)}
-      hideProbabilities={() => {
-        probabilities = undefined;
-      }}
-    />
+    <div class="form-container">
+      <DebugForm
+        {state}
+        undo={() => {
+          if (!state) return;
+          undo(state);
+          triggerStateUpdate();
+        }}
+        stepThroughSolve={() => {
+          if (!state) return;
+          if (!solver) solver = solveStepByStep(state);
+          solverStep = solver.next().value;
+          state = state;
+        }}
+        {solverStep}
+        bind:showProbabilitiesOnMove
+        showProbabilities={() => state && showProbabilities(state)}
+        hideProbabilities={() => {
+          probabilities = undefined;
+        }}
+      />
+    </div>
   {/if}
 {/if}
 
 <style>
-  .header {
+  .form-container {
     max-width: 720px;
     margin: 0 auto;
   }
