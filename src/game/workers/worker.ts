@@ -8,6 +8,10 @@ self.addEventListener("message", async (evt) => {
   const job = jobs[name];
   if (!job) throw new Error(`Unknown job name: ${name}`);
 
-  const result = await (job as WorkerJob)(...args);
-  postMessage({ result });
+  try {
+    const result = await (job as WorkerJob)(...args);
+    postMessage({ result });
+  } catch (err) {
+    postMessage({ error: String(err) });
+  }
 });

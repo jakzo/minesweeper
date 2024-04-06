@@ -1,7 +1,7 @@
 import { decideMinePositionsWhere, clickCell } from "../interactions";
 import { solve } from "../solver/solve";
 import type { State, Cell } from "../types";
-import { CancelledError, cloneState, debounce } from "../utils";
+import { cloneState, debounce } from "../utils";
 
 const debounced = debounce(5);
 

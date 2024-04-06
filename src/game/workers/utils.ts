@@ -58,14 +58,20 @@ export const callWorker = (name: string, args: unknown[]) => {
       }
     };
 
-    const onMessage = (evt: MessageEvent<{ result?: unknown }>) => {
+    const onMessage = (
+      evt: MessageEvent<{ result?: unknown; error?: string }>
+    ) => {
       if (evt.data?.result) {
         cleanup();
         resolve(evt.data.result);
+      } else if (evt.data?.error) {
+        cleanup();
+        reject(evt.data.error);
       } else {
         promise.onMessage?.(evt);
       }
     };
+
     const onError = (evt: ErrorEvent) => {
       cleanup();
       reject(evt.error);

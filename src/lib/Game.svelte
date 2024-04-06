@@ -15,13 +15,7 @@
     SolverStep,
     State,
   } from "../game/types";
-  import {
-    CancelledError,
-    initState,
-    isFinished,
-    isStarted,
-    undo,
-  } from "../game/utils";
+  import { initState, isFinished, isStarted, undo } from "../game/utils";
   import TimerDisplay from "./TimerDisplay.svelte";
   import { clickCell, decideMinePositionsRandom } from "../game/interactions";
   import { solveStepByStep } from "../game/solver/solve";
@@ -33,6 +27,7 @@
   let state: State | undefined;
   let solver: ReturnType<typeof solveStepByStep> | undefined;
   let solverStep: SolverStep | undefined | void;
+  let errorMessage: string | undefined;
   let numGeneratedGrids = 0;
   // TODO: Shade clicked cell yellow when probability not 0% or 100%
   let noGuessing = true;
@@ -115,7 +110,7 @@
 
       triggerStateUpdate();
     } catch (err) {
-      if (!(err instanceof CancelledError)) throw err;
+      errorMessage = String(err);
     }
   };
 
@@ -185,6 +180,7 @@
     </div>
   {/if}
 </div>
+{#if errorMessage}<div class="error">{errorMessage}</div>{/if}
 {#if state}
   <Grid
     {state}
@@ -243,5 +239,11 @@
   .lost {
     color: #933;
     font-weight: bold;
+  }
+
+  .error {
+    color: #c33;
+    font-weight: bold;
+    text-align: center;
   }
 </style>

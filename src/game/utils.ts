@@ -80,19 +80,12 @@ export const initState = ({
   moves: [],
 });
 
-export class CancelledError extends Error {
-  constructor() {
-    super("Operation cancelled");
-  }
-}
-
 export const isStarted = (state: State) => state.revealedCount > 0;
 
 export const isFinished = (state: State) => state.stopTimeMs !== undefined;
 
 export const undo = (state: State) => {
   if (state.moves.length <= 1) return;
-  debugger;
   const move = state.moves.pop()!;
   for (let i = move.changes.length - 1; i >= 0; i--) {
     const [index, type] = move.changes[i];
