@@ -13,9 +13,9 @@
   let mineRatio = 0.2;
   let mineCount = mineRatioToCount(mineRatio);
   let isMineRatioSelected = true;
-  export let noGuessing = true;
-  export let difficultyMin = 50;
-  export let difficultyMax = 100;
+  export let noGuessing: boolean;
+  export let difficultyMin: number;
+  export let difficultyMax: number;
   export let isFindingGrid: boolean;
 
   const updateMineCount = () => {

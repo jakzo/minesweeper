@@ -108,7 +108,7 @@
           decideMinePositionsRandom(state, cell.x, cell.y);
         }
       }
-      clickCell(state, cell, isFlag);
+      clickCell(state, state.cells[cell.index]!, isFlag);
       if (isFirstMove && !state.solveResult) {
         state.solveResult = await workerClient.solve(state);
       }
