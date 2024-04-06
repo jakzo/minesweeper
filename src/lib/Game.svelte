@@ -17,19 +17,14 @@
   } from "../game/types";
   import {
     CancelledError,
-    cloneState,
     initState,
     isFinished,
     isStarted,
     undo,
   } from "../game/utils";
   import TimerDisplay from "./TimerDisplay.svelte";
-  import {
-    clickCell,
-    decideMinePositionsRandom,
-    decideMinePositionsWhere,
-  } from "../game/interactions";
-  import { solve, solveStepByStep } from "../game/solver/solve";
+  import { clickCell, decideMinePositionsRandom } from "../game/interactions";
+  import { solveStepByStep } from "../game/solver/solve";
   import DebugForm from "./DebugForm.svelte";
 
   export let showDebugMenu = false;
@@ -45,10 +40,19 @@
 
   let generatedDifficultyMin = 0;
   let generatedDifficultyMax = 0;
+  let generateGridPromise:
+    | ReturnType<typeof workerClient.generateGrid>
+    | undefined;
+  let generatingState: State | undefined;
+
+  const clearGeneratingState = () => {
+    generatedDifficultyMin = 0;
+    generatedDifficultyMax = 0;
+    generateGridPromise = generatingState = undefined;
+  };
 
   let probabilities: Probabilities | undefined;
   let showProbabilitiesOnMove = false;
-  let isFindingGrid = false;
 
   let isCalculatingProbabilities = false;
   let recalculateProbabilities = false;
@@ -79,40 +83,26 @@
       if (isFirstMove) {
         state.startingCell = cell.index;
         if (noGuessing) {
-          isFindingGrid = true;
-          const startingState = state;
-          await decideMinePositionsWhere(state, cell.x, cell.y, async () => {
-            if (startingState !== state) throw new CancelledError();
-            numGeneratedGrids++;
-            const stateWithFirstMove = cloneState(state);
-            clickCell(
-              stateWithFirstMove,
-              stateWithFirstMove.cells[cell.index],
-              false
-            );
-            const solveResult = await workerClient.solve(stateWithFirstMove);
-            if (solveResult.difficulty === undefined) return false;
+          numGeneratedGrids = 0;
+          generatingState = state;
 
-            if (
-              generatedDifficultyMax === 0 ||
-              solveResult.difficulty < generatedDifficultyMin
-            ) {
-              generatedDifficultyMin = solveResult.difficulty;
-            }
-            if (solveResult.difficulty > generatedDifficultyMax) {
-              generatedDifficultyMax = solveResult.difficulty;
-            }
+          generateGridPromise = workerClient.generateGrid(
+            state,
+            cell,
+            noGuessing ? difficultyMin : undefined,
+            noGuessing ? difficultyMax : undefined
+          );
 
-            if (
-              solveResult.difficulty < difficultyMin ||
-              solveResult.difficulty > difficultyMax
-            ) {
-              return false;
-            }
+          generateGridPromise.onMessage = (evt) => {
+            if (!evt.data?.numGeneratedGrids) return;
+            numGeneratedGrids = evt.data.numGeneratedGrids;
+            generatedDifficultyMin = evt.data.generatedDifficultyMin;
+            generatedDifficultyMax = evt.data.generatedDifficultyMax;
+          };
 
-            state.solveResult = solveResult;
-            return true;
-          });
+          const result = await generateGridPromise;
+          clearGeneratingState();
+          state = result;
         } else {
           decideMinePositionsRandom(state, cell.x, cell.y);
         }
@@ -125,8 +115,6 @@
       triggerStateUpdate();
     } catch (err) {
       if (!(err instanceof CancelledError)) throw err;
-    } finally {
-      isFindingGrid = false;
     }
   };
 
@@ -149,10 +137,12 @@
       gameOptions = opts;
       state = initState(opts);
       solver = solverStep = probabilities = undefined;
-      numGeneratedGrids = generatedDifficultyMin = generatedDifficultyMax = 0;
+      generateGridPromise?.cancel();
+      clearGeneratingState();
+      numGeneratedGrids = 0;
     }}
     {state}
-    {isFindingGrid}
+    isFindingGrid={!!generateGridPromise}
     bind:noGuessing
     bind:difficultyMin
     bind:difficultyMax
@@ -195,7 +185,7 @@
 {#if state}
   <Grid
     {state}
-    {isFindingGrid}
+    isFindingGrid={!!generateGridPromise}
     {probabilities}
     {solverStep}
     onClick={onCellClick}

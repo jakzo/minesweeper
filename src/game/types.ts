@@ -66,6 +66,7 @@ export type SolverStep = NonNullable<
 >;
 
 export interface WorkerMessage {
+  type: "job";
   name: keyof typeof jobs;
   args: string;
 }

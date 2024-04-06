@@ -1,9 +1,5 @@
 import { type State, type Cell, type GameOptions, ChangeType } from "./types";
 
-export type ReturnsPromise<F extends (...args: any[]) => any> = (
-  ...args: Parameters<F>
-) => Promise<ReturnType<F>>;
-
 export const coordToIndex = (state: State, x: number, y: number) =>
   x + y * state.width;
 
@@ -127,4 +123,25 @@ export const undo = (state: State) => {
       }
     }
   }
+};
+
+export const debounce = (ms: number) => {
+  let lastCallTs = 0;
+  let isWaiting = false;
+  return (fn: () => void) => {
+    if (isWaiting) return;
+    const now = Date.now();
+    const elapsed = now - lastCallTs;
+    if (elapsed >= ms) {
+      lastCallTs = now;
+      fn();
+    } else {
+      setTimeout(() => {
+        lastCallTs = Date.now();
+        isWaiting = false;
+        fn();
+      }, ms - elapsed);
+      isWaiting = true;
+    }
+  };
 };
