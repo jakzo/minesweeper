@@ -11,6 +11,7 @@ import {
 export function* solveStepByStep(state: State) {
   let mediumDifficultyReveals = 0;
   const solvedPartitionSizes: number[] = [];
+  const nonAdjacentRevealAdjacentSizes: number[] = [];
 
   main: while (!state.stopTimeMs) {
     const adjacentCells = getAdjacentCells(state);
@@ -57,13 +58,15 @@ export function* solveStepByStep(state: State) {
 
     partitions.sort((a, b) => a.size - b.size);
 
+    let minAdjacentMines = 0;
     for (const partition of partitions) {
       const partitionArr = [...partition];
-      const { totalCount, isMineCount } = search(
+      const { totalCount, isMineCount, minMines } = search(
         state,
         partitionArr,
         new Map()
       );
+      minAdjacentMines += minMines;
 
       const knownCells = new Map(
         isMineCount
@@ -90,8 +93,23 @@ export function* solveStepByStep(state: State) {
       }
     }
 
-    // TODO: If all mines are accounted for in adjacent cells, reveal all
-    // non-adjacent cells
+    if (minAdjacentMines + state.flagCount >= state.mineCount) {
+      const nonAdjacentCells = state.cells.filter(
+        (cell) =>
+          !cell.isRevealed && !cell.isFlagged && !adjacentCells.has(cell.index)
+      );
+      if (nonAdjacentCells.length > 0) {
+        for (const cell of nonAdjacentCells) {
+          clickCell(state, cell, false);
+        }
+        nonAdjacentRevealAdjacentSizes.push(adjacentCells.size);
+        yield {
+          step: "revealNonAdjacentCells",
+          nonAdjacentCells,
+        };
+        continue;
+      }
+    }
 
     yield { step: "unsolvable" };
     return;
@@ -101,6 +119,9 @@ export function* solveStepByStep(state: State) {
     step: "finished",
     totalDifficulty:
       mediumDifficultyReveals ** 0.75 +
+      nonAdjacentRevealAdjacentSizes
+        .sort((a, b) => b - a)
+        .reduce((total, size, i) => total + size * (i + 1) ** -0.4, 0) +
       solvedPartitionSizes
         .sort((a, b) => b - a)
         .reduce((total, size, i) => total + size * (i + 1) ** -0.4, 0),

@@ -138,6 +138,7 @@ export const search = (
 ) => {
   const isMineCount = adjacentCells.map(() => 0);
   let totalCount = 0;
+  let minMines: number | undefined;
 
   const visited = new Map<number, number>();
   const mineStack: boolean[] = [];
@@ -146,9 +147,14 @@ export const search = (
   const visit = () => {
     if (mineStack.length >= adjacentCells.length) {
       totalCount++;
+      let numMines = 0;
       for (const [i, isMine] of mineStack.entries()) {
-        if (isMine) isMineCount[i]++;
+        if (isMine) {
+          isMineCount[i]++;
+          numMines++;
+        }
       }
+      if (minMines === undefined || numMines < minMines) minMines = numMines;
       return;
     }
 
@@ -198,7 +204,7 @@ export const search = (
 
   visit();
 
-  return { totalCount, isMineCount };
+  return { totalCount, isMineCount, minMines: minMines ?? 0 };
 };
 
 const isAdjacentToRevealedCell = (state: State, x: number, y: number) => {
