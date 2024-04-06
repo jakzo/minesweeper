@@ -155,9 +155,11 @@
           <div>
             Difficulty: {state.solveResult.difficulty !== undefined
               ? state.solveResult.difficulty.toFixed(1)
-              : "unsolvable"}
+              : "requires guessing"}
           </div>
-          <div>(generated grids: {numGeneratedGrids})</div>
+          {#if numGeneratedGrids > 0}
+            <div>(generated grids: {numGeneratedGrids})</div>
+          {/if}
         {:else}
           <div>Generated grids: {numGeneratedGrids}</div>
           <div>
