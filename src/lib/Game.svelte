@@ -34,6 +34,7 @@
   let solver: ReturnType<typeof solveStepByStep> | undefined;
   let solverStep: SolverStep | undefined | void;
   let numGeneratedGrids = 0;
+  // TODO: Shade clicked cell yellow when probability not 0% or 100%
   let noGuessing = true;
   let difficultyMin = 50;
   let difficultyMax = 100;

@@ -33,6 +33,7 @@ export const cloneState = (state: State): State => ({
   ...state,
   cells: cloneCells(state),
   mines: new Set(state.mines),
+  moves: [...state.moves],
 });
 
 export const cloneCells = (state: State): Cell[] =>
@@ -91,6 +92,7 @@ export const isFinished = (state: State) => state.stopTimeMs !== undefined;
 
 export const undo = (state: State) => {
   if (state.moves.length <= 1) return;
+  debugger;
   const move = state.moves.pop()!;
   for (let i = move.changes.length - 1; i >= 0; i--) {
     const [index, type] = move.changes[i];
