@@ -25,6 +25,7 @@
 
   let gameOptions: GameOptions | undefined;
   let state: State | undefined;
+  let guesses = new Set<number>();
   let solver: ReturnType<typeof solveStepByStep> | undefined;
   let solverStep: SolverStep | undefined | void;
   let errorMessage: string | undefined;
@@ -102,6 +103,14 @@
         } else {
           decideMinePositionsRandom(state, cell.x, cell.y);
         }
+      } else if (!isFlag && noGuessing) {
+        workerClient.calculateProbabilities(state).then((probabilities) => {
+          const probability = probabilities.get(cell.index);
+          if (probability !== undefined && probability > 0 && probability < 1) {
+            guesses.add(cell.index);
+          }
+          guesses = guesses;
+        });
       }
       clickCell(state, state.cells[cell.index]!, isFlag);
       if (isFirstMove && !state.solveResult) {
@@ -136,6 +145,8 @@
       generateGridPromise?.cancel();
       clearGeneratingState();
       numGeneratedGrids = 0;
+      guesses.clear();
+      guesses = guesses;
     }}
     {state}
     isFindingGrid={!!generateGridPromise}
@@ -185,6 +196,7 @@
   <Grid
     {state}
     isFindingGrid={!!generateGridPromise}
+    {guesses}
     {probabilities}
     {solverStep}
     onClick={onCellClick}
@@ -196,6 +208,11 @@
         undo={() => {
           if (!state) return;
           undo(state);
+          for (const index of guesses) {
+            if (!state.cells[index].isRevealed) {
+              guesses.delete(index);
+            }
+          }
           triggerStateUpdate();
         }}
         stepThroughSolve={() => {

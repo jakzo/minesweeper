@@ -8,6 +8,7 @@
   export let isWon: boolean;
   export let isStartingCell: boolean;
   export let isDisabled: boolean;
+  export let isGuess: boolean;
   export let probability: number | undefined = undefined;
   export let solverStep: SolverStep | undefined | void;
   export let onClick: (isFlag: boolean) => void;
@@ -63,6 +64,7 @@
   class:finished={isFinished}
   class:won={isWon}
   class:start={isStartingCell}
+  class:guess={isGuess}
   class:solver-adjacent={solverStep?.adjacentCells?.has(cell.index)}
   class:solver-solved={solverStep?.solved?.has(cell.index)}
   class={partitionIndex !== undefined
@@ -143,6 +145,10 @@
   .finished.hidden.flag,
   .mine.revealed {
     background: #f99;
+  }
+
+  .guess {
+    background: #ee9;
   }
 
   .probability {

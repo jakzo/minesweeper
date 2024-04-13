@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { solveStepByStep } from "../game/solver/solve";
   import type { Cell, Probabilities, SolverStep, State } from "../game/types";
   import CellComponent from "./Cell.svelte";
 
   export let state: State;
   export let isFindingGrid: boolean;
+  export let guesses: Set<number>;
   export let probabilities: Probabilities | undefined;
   export let solverStep: SolverStep | undefined | void;
   export let onClick: (cell: Cell, isFlag: boolean) => void;
@@ -33,6 +33,7 @@
           onClick={(isFlag) => onClick(cell, isFlag)}
           isStartingCell={state.startingCell === cell.index}
           isDisabled={isFindingGrid}
+          isGuess={guesses.has(cell.index)}
           probability={probabilities?.get(cell.index)}
           {solverStep}
         />
