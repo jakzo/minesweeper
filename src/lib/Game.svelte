@@ -4,6 +4,7 @@
   import {
     initWorkers,
     destroyWorkers,
+    generateGridInParallel,
     workerClient,
   } from "../game/workers/utils";
   import NewGameForm from "./NewGameForm.svelte";
@@ -38,7 +39,7 @@
   let generatedDifficultyMin = 0;
   let generatedDifficultyMax = 0;
   let generateGridPromise:
-    | ReturnType<typeof workerClient.generateGrid>
+    | ReturnType<typeof generateGridInParallel>
     | undefined;
   let generatingState: State | undefined;
 
@@ -83,7 +84,7 @@
           numGeneratedGrids = 0;
           generatingState = state;
 
-          generateGridPromise = workerClient.generateGrid(
+          generateGridPromise = generateGridInParallel(
             state,
             cell,
             noGuessing ? difficultyMin : undefined,
