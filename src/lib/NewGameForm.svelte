@@ -13,7 +13,8 @@
   let mineRatio = 0.2;
   let mineCount = mineRatioToCount(mineRatio);
   let isMineRatioSelected = true;
-  export let noGuessing: boolean;
+  export let solvableWithoutGuessing: boolean;
+  export let failOnGuess: boolean;
   export let difficultyMin: number;
   export let difficultyMax: number;
   export let isFindingGrid: boolean;
@@ -96,13 +97,23 @@
   {#if state}
     <div class="fields">
       <div class="grid-2-columns">
-        <label for="no-guessing">No guessing:</label>
+        <label for="solvable-without-guessing">Solvable without guessing:</label
+        >
         <div>
           <input
-            id="no-guessing"
+            id="solvable-without-guessing"
             type="checkbox"
             disabled={isFindingGrid || isStarted(state)}
-            bind:checked={noGuessing}
+            bind:checked={solvableWithoutGuessing}
+          />
+        </div>
+        <label for="fail-on-guess">Fail on guess:</label>
+        <div>
+          <input
+            id="fail-on-guess"
+            type="checkbox"
+            disabled={isFindingGrid || isStarted(state)}
+            bind:checked={failOnGuess}
           />
         </div>
       </div>
@@ -114,7 +125,9 @@
           min={0}
           max={difficultyMax}
           step="any"
-          disabled={isFindingGrid || !noGuessing || isStarted(state)}
+          disabled={isFindingGrid ||
+            !solvableWithoutGuessing ||
+            isStarted(state)}
           bind:value={difficultyMin}
         />
         <label for="difficulty-max">Difficulty max:</label>
@@ -123,7 +136,9 @@
           type="number"
           min={difficultyMin}
           step="any"
-          disabled={isFindingGrid || !noGuessing || isStarted(state)}
+          disabled={isFindingGrid ||
+            !solvableWithoutGuessing ||
+            isStarted(state)}
           bind:value={difficultyMax}
         />
       </div>

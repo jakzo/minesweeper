@@ -31,10 +31,10 @@
   let solverStep: SolverStep | undefined | void;
   let errorMessage: string | undefined;
   let numGeneratedGrids = 0;
-  // TODO: Shade clicked cell yellow when probability not 0% or 100%
-  let noGuessing = true;
+  let solvableWithoutGuessing = true;
+  let failOnGuess = true;
   let difficultyMin = 50;
-  let difficultyMax = 100;
+  let difficultyMax = 200;
 
   let generatedDifficultyMin = 0;
   let generatedDifficultyMax = 0;
@@ -42,6 +42,7 @@
     | ReturnType<typeof generateGridInParallel>
     | undefined;
   let generatingState: State | undefined;
+  let isFailingGuess = false;
 
   const clearGeneratingState = () => {
     generatedDifficultyMin = 0;
@@ -80,15 +81,15 @@
       const isFirstMove = !isStarted(state);
       if (isFirstMove) {
         state.startingCell = cell.index;
-        if (noGuessing) {
+        if (solvableWithoutGuessing) {
           numGeneratedGrids = 0;
           generatingState = state;
 
           generateGridPromise = generateGridInParallel(
             state,
             cell,
-            noGuessing ? difficultyMin : undefined,
-            noGuessing ? difficultyMax : undefined
+            solvableWithoutGuessing ? difficultyMin : undefined,
+            solvableWithoutGuessing ? difficultyMax : undefined,
           );
 
           generateGridPromise.onMessage = (evt) => {
@@ -104,14 +105,31 @@
         } else {
           decideMinePositionsRandom(state, cell.x, cell.y);
         }
-      } else if (!isFlag && noGuessing) {
-        workerClient.calculateProbabilities(state).then((probabilities) => {
-          const probability = probabilities.get(cell.index);
-          if (probability !== undefined && probability > 0 && probability < 1) {
-            guesses.add(cell.index);
+      } else if (!isFlag && !cell.isFlagged) {
+        if (failOnGuess) {
+          isFailingGuess = true;
+          try {
+            const result = await workerClient.findGridWithMine(
+              state,
+              cell.index,
+            );
+            if (result.state) state = result.state;
+          } finally {
+            isFailingGuess = false;
           }
-          guesses = guesses;
-        });
+        } else if (solvableWithoutGuessing) {
+          workerClient.calculateProbabilities(state).then((probabilities) => {
+            const probability = probabilities.get(cell.index);
+            if (
+              probability !== undefined &&
+              probability > 0 &&
+              probability < 1
+            ) {
+              guesses.add(cell.index);
+            }
+            guesses = guesses;
+          });
+        }
       }
       clickCell(state, state.cells[cell.index]!, isFlag);
       if (isFirstMove && !state.solveResult) {
@@ -150,8 +168,9 @@
       guesses = guesses;
     }}
     {state}
-    isFindingGrid={!!generateGridPromise}
-    bind:noGuessing
+    isFindingGrid={!!generateGridPromise || isFailingGuess}
+    bind:solvableWithoutGuessing
+    bind:failOnGuess
     bind:difficultyMin
     bind:difficultyMax
   />
@@ -171,7 +190,7 @@
           <div>Generated grids: {numGeneratedGrids}</div>
           <div>
             (difficulties found = {generatedDifficultyMin.toFixed(1)} - {generatedDifficultyMax.toFixed(
-              1
+              1,
             )})
           </div>
         {/if}
@@ -196,7 +215,7 @@
 {#if state}
   <Grid
     {state}
-    isFindingGrid={!!generateGridPromise}
+    isFindingGrid={!!generateGridPromise || isFailingGuess}
     {guesses}
     {probabilities}
     {solverStep}
