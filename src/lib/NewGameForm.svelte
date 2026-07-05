@@ -10,7 +10,7 @@
 
   let width = 10;
   let height = 10;
-  let mineRatio = 0.2;
+  let mineRatio = 0.24;
   let mineCount = mineRatioToCount(mineRatio);
   let isMineRatioSelected = true;
   export let solvableWithoutGuessing: boolean;
@@ -112,7 +112,7 @@
           <input
             id="fail-on-guess"
             type="checkbox"
-            disabled={isFindingGrid || isStarted(state)}
+            disabled={isFindingGrid}
             bind:checked={failOnGuess}
           />
         </div>

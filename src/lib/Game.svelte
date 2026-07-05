@@ -41,13 +41,12 @@
   let generateGridPromise:
     | ReturnType<typeof generateGridInParallel>
     | undefined;
-  let generatingState: State | undefined;
   let isFailingGuess = false;
 
   const clearGeneratingState = () => {
     generatedDifficultyMin = 0;
     generatedDifficultyMax = 0;
-    generateGridPromise = generatingState = undefined;
+    generateGridPromise = undefined;
   };
 
   let probabilities: Probabilities | undefined;
@@ -83,7 +82,6 @@
         state.startingCell = cell.index;
         if (solvableWithoutGuessing) {
           numGeneratedGrids = 0;
-          generatingState = state;
 
           generateGridPromise = generateGridInParallel(
             state,
@@ -106,29 +104,24 @@
           decideMinePositionsRandom(state, cell.x, cell.y);
         }
       } else if (!isFlag && !cell.isFlagged) {
-        if (failOnGuess) {
-          isFailingGuess = true;
+        if (failOnGuess || solvableWithoutGuessing) {
+          isFailingGuess = failOnGuess;
           try {
             const result = await workerClient.findGridWithMine(
               state,
               cell.index,
             );
-            if (result.state) state = result.state;
+            if (result.state) {
+              if (failOnGuess) {
+                state = result.state;
+              } else if (solvableWithoutGuessing) {
+                guesses.add(cell.index);
+                guesses = guesses;
+              }
+            }
           } finally {
             isFailingGuess = false;
           }
-        } else if (solvableWithoutGuessing) {
-          workerClient.calculateProbabilities(state).then((probabilities) => {
-            const probability = probabilities.get(cell.index);
-            if (
-              probability !== undefined &&
-              probability > 0 &&
-              probability < 1
-            ) {
-              guesses.add(cell.index);
-            }
-            guesses = guesses;
-          });
         }
       }
       clickCell(state, state.cells[cell.index]!, isFlag);
