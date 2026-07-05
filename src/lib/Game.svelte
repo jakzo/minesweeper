@@ -33,7 +33,7 @@
   let numGeneratedGrids = 0;
   let solvableWithoutGuessing = true;
   let failOnGuess = true;
-  let difficultyMin = 50;
+  let difficultyMin = 70;
   let difficultyMax = 200;
 
   let generatedDifficultyMin = 0;
